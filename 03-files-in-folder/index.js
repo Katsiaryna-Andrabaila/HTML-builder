@@ -9,7 +9,7 @@ fs.readdir(folder, {withFileTypes: true}, (error, files) => {
         fs.stat(currentFile, (statError, Dirent) => {
             if(statError) throw statError;
             if (files[i].isFile()) {
-                console.log(`${files[i].name.slice(0, files[i].name.indexOf('.'))} - ${path.extname(files[i].name).slice(1)} - ${Dirent.size / 1000}kb`);
+                console.log(`${files[i].name.slice(0, files[i].name.indexOf('.'))} - ${path.extname(files[i].name).slice(1)} - ${(Dirent.size / 1024).toFixed(3)}kb`);
             }
         })
     }
