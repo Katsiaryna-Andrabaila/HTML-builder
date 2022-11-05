@@ -13,6 +13,7 @@ fs.readdir(folder, (error, files) => {
             const outStream = fs.createReadStream(path.join(folder, file), 'utf-8');
             outStream.on('data', chunk => {
                 onStream.write(chunk);
+                onStream.write('\n\n');
             })
         }
     }
