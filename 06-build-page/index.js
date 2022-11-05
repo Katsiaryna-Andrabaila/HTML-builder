@@ -1,4 +1,5 @@
 const fs = require('fs');
+//const promises = require('fs/promises');
 const path = require('path');
 const targetFolder = path.join(__dirname, 'project-dist');
 const startAssetsFolder = path.join(__dirname, 'assets');
@@ -16,18 +17,41 @@ fs.access(targetFolder, (err) => {
         getIndex();
         getAssets(startAssetsFolder);
     } else {
-        fs.readdir(targetFolder, {withFileTypes: true}, (error, files) => {
-            if (error) throw error;
+        fs.truncate(path.join(targetFolder, 'index.html'), error => {
+            if(error) throw error;
+        });
+        fs.truncate(path.join(targetFolder, 'style.css'), error => {
+            if(error) throw error;
+        });
+        fs.readdir(targetAssets, (err, files) => {
+            if(err) throw err;
             for (const file of files) {
-                let currentFile = path.join(targetFolder, file.name);
-                fs.stat(currentFile, (statError, Dirent) => {
-                    if(statError) throw statError;
-                    if (file.isFile()) {
-                        fs.unlink(currentFile, err => {
-                            if(err) throw err;
-                        })
-                    } else {
-                        deleteFolder(currentFile);
+                let currentAssetsFolder = path.join(targetAssets, file);
+                fs.readdir(currentAssetsFolder, (assetError, assets) => {
+                    if(assetError) throw assetError;
+                    for (const asset of assets) {
+                        let currentAsset = path.join(currentAssetsFolder, asset);
+                        fs.unlink(currentAsset, currentAssetError => {
+                            if(currentAssetError) throw currentAssetError;
+                        });
+                    }
+                });
+            }
+            for (const file of files) {
+                fs.rmdir(path.join(targetAssets, file), folderError => {
+                    if(folderError) {
+                        fs.readdir(path.join(targetAssets, file), (assetError, assets) => {
+                            if(assetError) throw assetError;
+                            for (const asset of assets) {
+                                let currentAsset = path.join(path.join(targetAssets, file), asset);
+                                fs.unlink(currentAsset, currentAssetError => {
+                                    if(currentAssetError) throw currentAssetError;
+                                });
+                            }
+                        });
+                        fs.rmdir(path.join(targetAssets, file), folderError => {
+                            if(folderError) throw folderError;
+                        });
                     }
                 });
             }
@@ -37,28 +61,6 @@ fs.access(targetFolder, (err) => {
         getAssets(startAssetsFolder);
     }
 });
-
-function deleteFolder(folder) {
-    fs.readdir(folder, {withFileTypes: true}, (err, files) => {
-        if(err) throw err;
-        for (const file of files) {
-            let currentFile = path.join(folder, file.name);
-            fs.stat(currentFile, (statError, Dirent) => {
-                if(statError) throw statError;
-                if(file.isFile()) {
-                    fs.unlink(path.join(folder, file), error => {
-                        if(error) throw error;
-                    });
-                } else {
-                    deleteFolder(file);
-                }
-            });
-        }
-    });
-    fs.rmdir(folder, error => {
-        if(error) throw error;
-    });
-}
 
 function getBundle() {
     const startStylesFolder = path.join(__dirname, 'styles');
@@ -71,7 +73,8 @@ function getBundle() {
                 const outStream = fs.createReadStream(path.join(startStylesFolder, file), 'utf-8');
                 outStream.on('data', chunk => {
                     onStream.write(chunk);
-                })
+                    onStream.write('\n\n');
+                });
             }
         }
     });
@@ -79,25 +82,25 @@ function getBundle() {
 
 function getIndex() {
     const startIndex = path.join(__dirname, 'template.html');
-    const targetIndex = path.join(targetFolder, 'index.html');
     const components = path.join(__dirname, 'components');
-        fs.readFile(startIndex, 'utf-8', (error, value) => {
-            if(error) throw error;
-            fs.readdir(components, {withFileTypes: true}, (err, files) => {
-                if(err) throw err;
-                for (const file of files) {
-                    let currentFile = path.join(components, file.name);
+    fs.readFile(startIndex, 'utf-8', (error, value) => {
+        if(error) throw error;
+        fs.readdir(components, {withFileTypes: true}, (err, files) => {
+            if(err) throw err;
+            let targetIndex = path.join(targetFolder, 'index.html');
+            for (const file of files) {
+                let currentFile = path.join(components, file.name);
+                fs.readFile(currentFile, 'utf-8', (readError, data) => {
+                    if(readError) throw readError;
                     let tagName = file.name.slice(0, file.name.indexOf('.'));
-                    fs.readFile(currentFile, 'utf-8', (readError, data) => {
-                        if(readError) throw readError;
-                        value = value.replace(`{{${tagName}}}`, data);
-                        fs.writeFile(targetIndex, value, writeError => {
-                            if(writeError) throw writeError;
-                        });
+                    value = value.replace(`{{${tagName}}}`, data);
+                    fs.writeFile(targetIndex, value, writeError => {
+                        if(writeError) throw writeError;
                     });
-                }
-            });
+                });
+            }
         });
+    });
 }
 
 function getAssets(startAssetsFolder) {
@@ -112,10 +115,10 @@ function getAssets(startAssetsFolder) {
                         if(error) throw error;
                     });
                 } else {
+                    fs.mkdir(path.join(targetAssets, file.name), dirError => {
+                        if(dirError) throw dirError;
+                    });
                     fs.readdir(currentFile, (fileError, files2) => {
-                        fs.mkdir(path.join(targetAssets, file.name), dirError => {
-                            if(dirError) throw dirError;
-                        });
                         if(fileError) throw fileError;
                         for (const file2 of files2) {
                             let resultFolder = path.join(targetAssets, file.name);
