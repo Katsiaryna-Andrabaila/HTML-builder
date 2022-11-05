@@ -1,5 +1,4 @@
 const fs = require('fs');
-//const promises = require('fs/promises');
 const path = require('path');
 const targetFolder = path.join(__dirname, 'project-dist');
 const startAssetsFolder = path.join(__dirname, 'assets');
